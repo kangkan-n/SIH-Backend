@@ -2,37 +2,37 @@
 # SIH 2026 — Landslide Monitoring Backend
 # M3: FastAPI + PostgreSQL + PostGIS
 # =============================================================================
+# Install with: .\venv\Scripts\pip.exe install -r requirements.txt
 
 # --- Core Web Framework ---
-fastapi==0.115.6
-uvicorn[standard]==0.32.1
+fastapi
+uvicorn[standard]
 
 # --- Pydantic (Data Validation) ---
-pydantic==2.10.3
-pydantic-settings==2.6.1
-email-validator==2.2.0
+pydantic
+pydantic-settings
+email-validator
 
 # --- Database ---
-sqlalchemy==2.0.36
-asyncpg==0.30.0          # Async PostgreSQL driver
-alembic==1.14.0          # DB migrations
+sqlalchemy          # ORM (2.x async)
+asyncpg             # Async PostgreSQL driver
+alembic             # DB migrations
 
 # --- GIS / PostGIS ---
-geoalchemy2==0.16.0
-shapely==2.0.6
+geoalchemy2
+shapely
 
 # --- Authentication & Security ---
-python-jose[cryptography]==3.3.0   # JWT tokens
-passlib[bcrypt]==1.7.4             # Password hashing
-python-multipart==0.0.18           # Form / file uploads
+python-jose[cryptography]   # JWT tokens
+passlib[bcrypt]             # Password hashing
+python-multipart            # Form / file uploads
 
-# --- HTTP Client (for external APIs) ---
-httpx==0.28.1
+# --- HTTP Client (for external APIs: weather, earthquake data) ---
+httpx
 
 # --- Utilities ---
-python-dotenv==1.0.1
+python-dotenv
 
 # --- Testing (Phase 30) ---
-pytest==8.3.4
-pytest-asyncio==0.25.0
-httpx==0.28.1            # Also used as async test client
+pytest
+pytest-asyncio

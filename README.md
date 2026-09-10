@@ -5,146 +5,122 @@
 
 ---
 
-## 🎯 What This Is
+## 🎯 Project Overview
 
-The central FastAPI backend for the SIH 2026 Landslide Monitoring System.  
-Connects: M1 ML Engine ↔ M2 Field App ↔ M4 GIS Dashboard ↔ M5 Alerts ↔ M6 DevOps
+The central **FastAPI + PostgreSQL + PostGIS** backend for the Smart India Hackathon (SIH 2026) landslide monitoring, prediction, GIS visualization, field reporting, and early warning platform.
+
+Inter-module connections:
+`M1 ML Engine ↕ M3 Backend ↕ M2 Field App ↕ M4 GIS Dashboard ↕ M5 Alert Engine ↕ M6 Verification/DevOps`
 
 ---
 
-## 🛠️ Tech Stack
+## 🛠️ Technology Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Framework | FastAPI + Uvicorn |
-| Database | PostgreSQL + PostGIS |
-| ORM | SQLAlchemy 2.x (async) |
-| Migrations | Alembic |
-| Auth | JWT + bcrypt |
-| GIS | GeoAlchemy2 + Shapely |
-| Storage | Cloudinary (media files) |
+| **Core API Framework** | Python 3.12+, FastAPI, Uvicorn |
+| **Spatial Database** | PostgreSQL 16+ with PostGIS |
+| **ORM & Migrations** | SQLAlchemy 2.x (Async) & Alembic |
+| **GIS & Spatial** | GeoAlchemy2, Shapely, GeoJSON |
+| **Authentication** | JWT (jose) & Password Hashing (bcrypt) |
+| **Real-Time** | WebSockets (`/ws/dashboard`) |
+| **Testing** | Pytest & HTTPX Async Test Client |
+| **Containerization** | Docker & Docker Compose |
 
 ---
 
-## 🚀 Quick Start (Phase 1)
+## 🚀 Quick Start Guide
 
-### 1. Prerequisites
-- Python 3.12+
-- Git
-- PostgreSQL 16+ with PostGIS (needed from Phase 2)
-
-### 2. Clone & Setup
-
+### 1. Local Setup
 ```powershell
-# Navigate to backend folder
+# 1. Navigate to backend directory
 cd "d:\sih 2026\backend"
 
-# Activate virtual environment (Windows PowerShell)
+# 2. Activate virtual environment
 .\venv\Scripts\Activate.ps1
 
-# Install dependencies
-pip install -r requirements.txt
-```
+# 3. Install requirements
+.\venv\Scripts\pip.exe install -r requirements.txt
 
-### 3. Configure Environment
-
-```powershell
-# Copy example env file
+# 4. Copy environment template
 Copy-Item .env.example .env
-# Edit .env with your actual values (DB password, secret key, etc.)
+
+# 5. Start the FastAPI development server
+.\venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 4. Run the Server
-
+### 2. Run Automated Pytest Suite
 ```powershell
-# With virtual environment activated:
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+.\venv\Scripts\python.exe -m pytest tests/ -v
 ```
 
-### 5. Test
-
-| URL | What it does |
-|-----|-------------|
-| http://localhost:8000/ | Root health check |
-| http://localhost:8000/health | Health endpoint |
-| http://localhost:8000/docs | Swagger UI |
-| http://localhost:8000/redoc | ReDoc UI |
-
----
-
-## 📁 Project Structure
-
-```
-backend/
-├── app/
-│   ├── main.py              ← FastAPI app, CORS, routers
-│   ├── core/
-│   │   ├── config.py        ← Settings from .env
-│   │   ├── database.py      ← SQLAlchemy async engine
-│   │   ├── security.py      ← Password hashing + JWT
-│   │   └── dependencies.py  ← FastAPI dependency injection
-│   ├── models/              ← SQLAlchemy ORM models (Phase 5)
-│   ├── schemas/             ← Pydantic request/response schemas (Phase 7)
-│   ├── routers/             ← API route handlers (Phase 8+)
-│   ├── services/            ← Business logic (Phase 8+)
-│   ├── repositories/        ← Database query layer (Phase 8+)
-│   ├── utils/               ← Helpers & utilities
-│   └── middleware/          ← Custom middleware
-├── migrations/              ← Alembic migration files (Phase 6)
-├── tests/                   ← pytest test suite (Phase 30)
-├── .env                     ← Local secrets (NEVER commit)
-├── .env.example             ← Template (safe to commit)
-├── .gitignore
-├── requirements.txt
-├── Dockerfile               ← (Phase 32)
-└── docker-compose.yml       ← (Phase 32)
+### 3. Run with Docker Compose
+```bash
+docker-compose up --build
 ```
 
 ---
 
-## 🗺️ Development Phases
+## 🌐 Core API Endpoints
+
+| Category | Endpoint | Description |
+|----------|----------|-------------|
+| **Health** | `GET /` | Root system status |
+| **Health** | `GET /health` | Health monitoring |
+| **Auth** | `POST /api/v1/auth/register` | Register user (Citizen/Officer) |
+| **Auth** | `POST /api/v1/auth/login` | Obtain OAuth2 JWT token |
+| **Auth** | `GET /api/v1/auth/me` | Current authenticated user profile |
+| **Reports** | `POST /api/v1/reports` | Submit geo-tagged report with PostGIS POINT |
+| **Reports** | `GET /api/v1/reports/geojson` | GeoJSON FeatureCollection for M4 Dashboard |
+| **Reports** | `POST /api/v1/reports/{id}/verify` | M6 Field Officer verification |
+| **Risk (M1)** | `GET /api/v1/risk/location` | AI Risk prediction for lat/lon |
+| **Risk (M1)** | `GET /api/v1/risk/area` | Bounding box spatial risk grid |
+| **Spatial** | `GET /api/v1/roads/geojson` | Roads LineString layer for GIS |
+| **Spatial** | `GET /api/v1/villages` | Settlements demographic data |
+| **Spatial** | `GET /api/v1/infrastructure` | Critical assets (hospitals, bridges) |
+| **Emergency** | `GET /api/v1/emergency/priorities` | Decision support P1/P2/P3 rankings |
+| **Alerts (M5)** | `GET /api/v1/alerts` | Active early warning alerts |
+| **Alerts (M5)** | `POST /api/v1/alerts/{id}/acknowledge` | Official alert acknowledgement |
+| **Real-Time** | `WS /ws/dashboard` | WebSocket stream for live updates |
+| **Docs** | `http://localhost:8000/docs` | Swagger OpenAPI UI |
+
+---
+
+## 🗺️ Development Phases Status
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 1 | Project Setup & FastAPI | ✅ Done |
-| 2 | PostgreSQL + PostGIS | ⏳ Next |
-| 3 | Database Architecture | ⏳ |
-| 4 | Spatial Database Design | ⏳ |
-| 5 | SQLAlchemy Models | ⏳ |
-| 6 | Alembic Migrations | ⏳ |
-| ... | ... | ⏳ |
-
----
-
-## 🔐 Environment Variables
-
-See `.env.example` for all required variables.
-
-**Critical**: Never commit `.env` to Git. It is in `.gitignore`.
-
----
-
-## 🧪 Running Tests (Phase 30)
-
-```powershell
-pytest tests/ -v
-```
-
----
-
-## 🌐 API Documentation
-
-Interactive docs available at `/docs` (Swagger UI) and `/redoc`.
-
----
-
-## 👥 Team
-
-| ID | Role |
-|----|------|
-| M1 | Data + ML |
-| M2 | Mobile/Web Field Reporting |
-| **M3** | **Backend + PostGIS (this repo)** |
-| M4 | GIS Dashboard |
-| M5 | Alerts + External Data |
-| M6 | Verification + DevOps |
+| Phase 1 | Project Setup & FastAPI Initialization | ✅ Complete |
+| Phase 2 | PostgreSQL + PostGIS Engine Setup | ✅ Complete |
+| Phase 3 | Database Architecture (16 Tables) | ✅ Complete |
+| Phase 4 | Spatial Database Design (POINT, LINESTRING, POLYGON, SRID 4326) | ✅ Complete |
+| Phase 5 | SQLAlchemy 2.x Models | ✅ Complete |
+| Phase 6 | Alembic Migrations System | ✅ Complete |
+| Phase 7 | Pydantic Request & Response Schemas | ✅ Complete |
+| Phase 8 | JWT Authentication & RBAC Roles | ✅ Complete |
+| Phase 9 | Field Reporting API & Idempotency Key | ✅ Complete |
+| Phase 10 | Geo-Tagged Media Metadata & Hashes | ✅ Complete |
+| Phase 11 | Report Retrieval & Spatial Filters | ✅ Complete |
+| Phase 12 | PostGIS Spatial Queries | ✅ Complete |
+| Phase 13 | GeoJSON APIs (M4 GIS Dashboard) | ✅ Complete |
+| Phase 14 | Risk Prediction API Interface | ✅ Complete |
+| Phase 15 | M1 ML Model Integration Service Layer | ✅ Complete |
+| Phase 16 | Risk Features Contract | ✅ Complete |
+| Phase 17 | Risk Storage & Snapshots | ✅ Complete |
+| Phase 18 | Risk Area Bounding Box API | ✅ Complete |
+| Phase 19 | Roads, Villages & Infrastructure APIs | ✅ Complete |
+| Phase 20 | Emergency Priority Decision API (P1/P2/P3) | ✅ Complete |
+| Phase 21 | Early Warning Alert Integration (M5) | ✅ Complete |
+| Phase 22 | Alert Delivery Records | ✅ Complete |
+| Phase 23 | Officer Verification Module (M6) | ✅ Complete |
+| Phase 24 | Audit Logging Architecture | ✅ Complete |
+| Phase 25 | Idempotent Offline Sync Support | ✅ Complete |
+| Phase 26 | Real-Time WebSockets Dashboard Stream | ✅ Complete |
+| Phase 27 | OpenAPI Swagger Documentation | ✅ Complete |
+| Phase 28 | Standardized Error Handling | ✅ Complete |
+| Phase 29 | Security Hardening & CORS | ✅ Complete |
+| Phase 30 | Automated Pytest Suite | ✅ Complete |
+| Phase 31 | Spatial Performance & GIST Indexing | ✅ Complete |
+| Phase 32 | Docker & Docker-Compose Setup | ✅ Complete |
+| Phase 33 | Production Deployment & Health Monitoring | ✅ Complete |
+| Phase 34 | Complete Multi-Module System Integration | ✅ Complete |

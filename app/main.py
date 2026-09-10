@@ -1,45 +1,32 @@
 """
 app/main.py
 
-What this file does:
-    - Creates the FastAPI application instance
-    - Configures CORS (so M2/M4 frontends can call our API)
-    - Mounts all API routers
-    - Provides the root GET / health endpoint
-
-Why CORS matters:
-    CORS (Cross-Origin Resource Sharing) is a browser security feature.
-    When M4's dashboard (running on localhost:3000) calls our API
-    (running on localhost:8000), the browser blocks it unless our 
-    backend explicitly allows it. We configure which origins are allowed.
-
-This is the entry point — uvicorn runs this file.
+Central FastAPI Application Entry Point for SIH 2026 Landslide Monitoring Backend.
+Mounts all Routers, CORS Middleware, Error Handlers, and Lifespan startup check.
 """
 
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.config import get_settings
+from app.routers import auth, reports, risk, spatial, emergency, alerts, websocket
+from app.middleware.error_handler import (
+    custom_http_exception_handler,
+    validation_exception_handler,
+)
 
 settings = get_settings()
 
 
-# ---------------------------------------------------------------------------
-# Lifespan (startup / shutdown events)
-# ---------------------------------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Runs code at startup and shutdown.
-    
-    Startup: Log that the server is ready.
-    Shutdown: Cleanly close DB connection pool.
-    
-    We will add database connection checks here in Phase 2.
+    Application lifespan startup and shutdown hooks.
     """
-    # STARTUP
     print(f"\n{'='*60}")
     print(f"  {settings.APP_NAME} v{settings.APP_VERSION}")
     print(f"  Environment : {settings.ENVIRONMENT}")
@@ -47,36 +34,26 @@ async def lifespan(app: FastAPI):
     print(f"  Docs        : http://127.0.0.1:8000/docs")
     print(f"{'='*60}\n")
     
-    yield  # App runs here
+    yield
     
-    # SHUTDOWN
     print("\nShutting down gracefully...")
 
 
-# ---------------------------------------------------------------------------
-# FastAPI Application Instance
-# ---------------------------------------------------------------------------
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     description="""
-## SIH 2026 — AI-Powered Landslide Monitoring Backend
-
+## SIH 2026 — AI-Powered Real-Time Landslide Monitoring Platform
 **PS ID: 26001** | North Eastern Region (NER)
 
-This is the M3 Backend built with:
-- **FastAPI** — High-performance Python web framework
-- **PostgreSQL + PostGIS** — Spatial database
-- **SQLAlchemy 2.x** — Async ORM
-- **JWT** — Authentication
-
-### Core Capabilities
-- 🗺️ GIS-enabled field reports with PostGIS geometry
-- 🤖 ML risk prediction integration (M1)
-- 📱 Mobile field reporting API (M2)
-- 🗺️ GeoJSON APIs for dashboard (M4)
-- 🚨 Alert management (M5)
-- ✅ Officer verification & audit (M6)
+### Central M3 Backend API Architecture
+- 🔐 **Authentication & RBAC** (JWT, Roles: Citizen, Field Officer, Admin)
+- 🗺️ **Geo-Tagged Field Reports** (PostGIS Point Geometry, Offline Sync Idempotency)
+- 🤖 **ML Risk Prediction** (M1 XGBoost Contract & Threshold Integration)
+- 🌐 **GeoJSON GIS Layers** (Roads, Villages, Infrastructure for M4 Dashboard)
+- 🚨 **Early Warning Alerts** (M5 Delivery & Officer Acknowledgement)
+- 🚑 **Emergency Prioritization** (Decision Support Ranking P1/P2/P3)
+- ⚡ **Real-Time Stream** (WebSockets for Live Dashboard)
     """,
     docs_url="/docs",
     redoc_url="/redoc",
@@ -84,44 +61,33 @@ This is the M3 Backend built with:
     lifespan=lifespan,
 )
 
-
-# ---------------------------------------------------------------------------
 # CORS Middleware
-# ---------------------------------------------------------------------------
-# CORS must be added BEFORE any routes.
-# It tells browsers: "Yes, requests from these origins are allowed."
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_origins_list,  # e.g. ["http://localhost:3000"]
+    allow_origins=settings.allowed_origins_list,
     allow_credentials=True,
-    allow_methods=["*"],     # GET, POST, PUT, DELETE, OPTIONS
-    allow_headers=["*"],     # Authorization, Content-Type, etc.
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
+# Standardized Error Handlers (Phase 28)
+app.add_exception_handler(StarletteHTTPException, custom_http_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
-# ---------------------------------------------------------------------------
-# Root Endpoint (Phase 1 Test)
-# ---------------------------------------------------------------------------
-@app.get(
-    "/",
-    tags=["Health"],
-    summary="Root health check",
-    response_description="Basic server info and status",
-)
+# Include All API Routers under /api/v1 (API Versioning)
+api_prefix = settings.API_V1_PREFIX
+
+app.include_router(auth.router, prefix=api_prefix)
+app.include_router(reports.router, prefix=api_prefix)
+app.include_router(risk.router, prefix=api_prefix)
+app.include_router(spatial.router, prefix=api_prefix)
+app.include_router(emergency.router, prefix=api_prefix)
+app.include_router(alerts.router, prefix=api_prefix)
+app.include_router(websocket.router)
+
+
+@app.get("/", tags=["Health"])
 async def root():
-    """
-    **Root endpoint** — confirms the FastAPI server is running.
-    
-    This is the first thing to test after starting the server.
-    Expected response:
-    ```json
-    {
-        "status": "ok",
-        "message": "SIH Landslide Backend is running",
-        ...
-    }
-    ```
-    """
     return {
         "status": "ok",
         "message": f"{settings.APP_NAME} is running",
@@ -133,32 +99,10 @@ async def root():
     }
 
 
-# ---------------------------------------------------------------------------
-# Health Check Endpoint (used in Phase 33 for deployment monitoring)
-# ---------------------------------------------------------------------------
-@app.get(
-    "/health",
-    tags=["Health"],
-    summary="Health check",
-)
+@app.get("/health", tags=["Health"])
 async def health_check():
-    """
-    Health check endpoint for deployment monitoring.
-    Load balancers and Docker health checks call this endpoint.
-    
-    In Phase 2, we will also check database connectivity here.
-    """
     return {
         "status": "healthy",
         "app": settings.APP_NAME,
         "version": settings.APP_VERSION,
     }
-
-
-# ---------------------------------------------------------------------------
-# Future routers will be included here (Phases 8–25)
-# ---------------------------------------------------------------------------
-# Example (do NOT add yet):
-# from app.routers import auth, reports, risk, alerts
-# app.include_router(auth.router, prefix=settings.API_V1_PREFIX)
-# app.include_router(reports.router, prefix=settings.API_V1_PREFIX)
